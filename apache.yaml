@@ -1,0 +1,45 @@
+---
+- name: Install Apache
+  hosts: apache
+  become: true # if not using root
+  vars:
+    httpd_user: "http"
+    domain: "domain.name"
+    http_conf: "domain.name.conf"
+    http_port: "80"
+  tasks:
+    - name: Install Apache
+      yum:
+        name: httpd
+        state: latest
+
+    - name: Create document root
+      file:
+        path: "/var/www/{{ domain }}"
+        state: directory
+        owner: "{{ httpd_user }}"
+        mode: '0755'
+        setype: "httpd_sys_content_t"     
+
+    - name: Setup Virtualhost
+      template:
+        src: "httpd.conf.j2"
+        dest: "/etc/httpd/conf.d/{{ http_conf }}"
+
+    - name: Create index.html
+      template:
+        src: "index.html.j2"
+        dest: "/var/www/{{ domain }}/index.html"
+
+    - name: Enable httpd service 
+      service:
+        name: httpd
+        enabled: true
+        state: restarted
+
+    - name: Open firewall port 80
+      firewalld:
+        service: http
+        state: enabled
+        immediate: true
+        permanent: true
